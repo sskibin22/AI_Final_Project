@@ -1,22 +1,34 @@
 import math
 
 #Read Global Files
-#read from data file line by line into a list
-faceFile = open(r"C:\Users\atfan\github\AI_Final_Project\facedata\facedatavalidation",'r')
-lines = faceFile.readlines()
+#read training data into list
+faceFile = open(r"C:\Users\atfan\github\AI_Final_Project\facedata\facedatatrain",'r')
+train_lines = faceFile.readlines()
 faceFile.close()
-#read from data labels file label by label into a list
-labelFile = open(r"C:\Users\atfan\github\AI_Final_Project\facedata\facedatavalidationlabels",'r')
-labels = []
+#read training data labels into a list
+labelFile = open(r"C:\Users\atfan\github\AI_Final_Project\facedata\facedatatrainlabels",'r')
+train_labels = []
 for c in labelFile.read():
     if c != '\n' and c != ' ':
-        labels.append(c)
+        train_labels.append(c)
+labelFile.close()
+#read testing data into list
+faceFile = open(r"C:\Users\atfan\github\AI_Final_Project\facedata\facedatatest",'r')
+test_lines = faceFile.readlines()
+faceFile.close()
+#read testing data labels into a list
+labelFile = open(r"C:\Users\atfan\github\AI_Final_Project\facedata\facedatatestlabels",'r')
+test_labels = []
+for c in labelFile.read():
+    if c != '\n' and c != ' ':
+        test_labels.append(c)
 labelFile.close()
 
 #Global Variables
-DATA_TOTAL = len(labels)
-FEATURE_ROWS = 5
-FEATURE_COLS = 5
+TRAIN_DATA_TOTAL = len(train_labels)
+TEST_DATA_TOTAL = len(test_labels)
+FEATURE_ROWS = 10
+FEATURE_COLS = 10
 FEATURE_TOTAL = FEATURE_ROWS * FEATURE_COLS
 IMAGE_PIX_WIDTH = 60
 IMAGE_PIX_HEIGHT = 70
@@ -25,7 +37,7 @@ PIX_INCREMENT_H = IMAGE_PIX_HEIGHT//FEATURE_COLS
 
 #class to get 2-D list of features for every instance
 class Features:
-    def __init__(self, l_list, f_rows, f_cols, pix_incr_W, pix_incr_H, d_total):
+    def __init__(self, f_rows, f_cols, pix_incr_W, pix_incr_H, d_total, lines):
         self.data_total = d_total
         self.startFeatx = 0
         self.endFeatx = pix_incr_H
@@ -34,6 +46,7 @@ class Features:
         self.f_cols = f_cols
         self.pixel_incr_W = pix_incr_W
         self.pixel_incr_H = pix_incr_H
+        self.lines = lines
 
     def get_features(self, f_list):
         numFeat = 1
@@ -42,7 +55,7 @@ class Features:
             endFeaty = self.pixel_incr_W
             for cols in range(self.f_cols):
                 count = 0
-                for line in lines[self.startFeatx:self.endFeatx]:
+                for line in self.lines[self.startFeatx:self.endFeatx]:
                     startFeaty = startFeaty
                     endFeaty = endFeaty
                     for char in line[startFeaty:endFeaty]:
@@ -54,7 +67,7 @@ class Features:
                 numFeat += 1
             self.startFeatx += self.pixel_incr_H
             self.endFeatx += self.pixel_incr_H
-
+    #returns a 2D list of all feature values across all instances in a data file
     def get_f_list(self):
         for x in range(self.data_total):
             featList = []
@@ -71,7 +84,7 @@ def get_total_true(labels_list, d_total):
     false_count = d_total - true_count
     return true_count, false_count
 
-#return a tuple of 2_D lists that contain fata tables for instance label = true and label = false
+#return a tuple of 2_D lists that contain data tables for instance label = true and label = false
 def get_data_tables(f_list, labels_list, feat_total, d_total):
     true_data_table = []
     false_data_table = []
@@ -167,16 +180,21 @@ def print_accuracy(labels_list, d_total, r_list):
 
 #main function to initialize all other functions
 def main():
-    features = Features(labels, FEATURE_ROWS, FEATURE_COLS, PIX_INCREMENT_W, PIX_INCREMENT_H, DATA_TOTAL)
-    feat_list = features.get_f_list()
-    t_f_total = get_total_true(labels, DATA_TOTAL)
-    t_f_data_tables = get_data_tables(feat_list, labels, FEATURE_TOTAL, DATA_TOTAL)
+    #Initialize classes to get feature lists from training and testing
+    features = Features(FEATURE_ROWS, FEATURE_COLS, PIX_INCREMENT_W, PIX_INCREMENT_H, TRAIN_DATA_TOTAL, train_lines)
+    train_feat_list = features.get_f_list()
+    features = Features(FEATURE_ROWS, FEATURE_COLS, PIX_INCREMENT_W, PIX_INCREMENT_H, TEST_DATA_TOTAL, test_lines)
+    test_feat_list = features.get_f_list()
+    #Initialize training functions
+    t_f_total = get_total_true(train_labels, TRAIN_DATA_TOTAL)
+    t_f_data_tables = get_data_tables(train_feat_list, train_labels, FEATURE_TOTAL, TRAIN_DATA_TOTAL)
     max_feature_value = get_max_feat_value(t_f_data_tables)
     true_data_feat_probs = get_data_feature_probs(FEATURE_TOTAL, max_feature_value, t_f_data_tables[0], t_f_total[0])
     false_data_feat_probs = get_data_feature_probs(FEATURE_TOTAL, max_feature_value, t_f_data_tables[1], t_f_total[1])
-    prob_inst_t_f = prob_instance_t_f(DATA_TOTAL, t_f_total[0])
-    result_list = get_results(DATA_TOTAL, FEATURE_TOTAL, max_feature_value, feat_list, true_data_feat_probs, false_data_feat_probs, prob_inst_t_f)
-    print_accuracy(labels, DATA_TOTAL, result_list)
+    prob_inst_t_f = prob_instance_t_f(TRAIN_DATA_TOTAL, t_f_total[0])
+    #Initialize testing functions
+    result_list = get_results(TEST_DATA_TOTAL, FEATURE_TOTAL, max_feature_value, test_feat_list, true_data_feat_probs, false_data_feat_probs, prob_inst_t_f)
+    print_accuracy(test_labels, TEST_DATA_TOTAL, result_list)
 
 #init main
 main()
