@@ -2,11 +2,11 @@ import math
 
 #Read Global Files
 #read from data file line by line into a list
-faceFile = open(r"C:\Users\atfan\OneDrive\Desktop\AI\Final Project\facedata\facedatavalidation",'r')
+faceFile = open(r"C:\Users\atfan\github\AI_Final_Project\facedata\facedatavalidation",'r')
 lines = faceFile.readlines()
 faceFile.close()
 #read from data labels file label by label into a list
-labelFile = open(r"C:\Users\atfan\OneDrive\Desktop\AI\Final Project\facedata\facedatavalidationlabels",'r')
+labelFile = open(r"C:\Users\atfan\github\AI_Final_Project\facedata\facedatavalidationlabels",'r')
 labels = []
 for c in labelFile.read():
     if c != '\n' and c != ' ':
