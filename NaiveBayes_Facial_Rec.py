@@ -77,7 +77,7 @@ class Features:
 
 #count number of instances that are either true or false
 def get_total_true(labels_list, d_total):
-    true_count = 1
+    true_count = 0
     for x in range(d_total):
         if labels_list[x] == '1':
             true_count += 1
