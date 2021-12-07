@@ -1,4 +1,5 @@
 import math
+import numpy as np
 
 #Read Global Files
 #read training data into list
@@ -27,53 +28,112 @@ labelFile.close()
 #Global Variables
 TRAIN_DATA_TOTAL = len(train_labels)
 TEST_DATA_TOTAL = len(test_labels)
-FEATURE_ROWS = 28
-FEATURE_COLS = 28
-FEATURE_TOTAL = FEATURE_ROWS * FEATURE_COLS
 IMAGE_PIX_WIDTH = 28
 IMAGE_PIX_HEIGHT = 28
-PIX_INCREMENT_W = IMAGE_PIX_WIDTH//FEATURE_ROWS
-PIX_INCREMENT_H = IMAGE_PIX_HEIGHT//FEATURE_COLS
+TRAIN_FILE_PIX_HEIGHT = TRAIN_DATA_TOTAL*IMAGE_PIX_HEIGHT
+TEST_FILE_PIX_HEIGHT = TEST_DATA_TOTAL*IMAGE_PIX_HEIGHT
+
+FILTER_DIM = 3
+filter = [[0, 1, 0],
+          [0, 1, 0],
+          [0, 1, 0]]
+
+def convert_image_to_bin(lines, file_pix_H, img_pix_H):
+    new_image_list = []
+    end_incr = img_pix_H
+    for x in range(0, file_pix_H, img_pix_H):
+        new_lines_list = []
+        for line in lines[x:end_incr]:
+            new_line_list = []
+            for char in line[:28]:
+                if char == '#' or char == '+':
+                    new_line_list.append(1)
+                else:
+                    new_line_list.append(0)
+
+            new_lines_list.append(new_line_list)
+
+        new_image_list.append(new_lines_list)
+        end_incr += img_pix_H
+
+    return new_image_list
 
 #class to get 2-D list of features for every instance
 class Features:
-    def __init__(self, f_rows, f_cols, pix_incr_W, pix_incr_H, d_total, lines):
+    def __init__(self, filtr, filter_dim, d_total, data):
         self.data_total = d_total
-        self.startFeatx = 0
-        self.endFeatx = pix_incr_H
-        self.f_list = []
-        self.f_rows = f_rows
-        self.f_cols = f_cols
-        self.pixel_incr_W = pix_incr_W
-        self.pixel_incr_H = pix_incr_H
-        self.lines = lines
+        self.all_img_f_list = []
+        self.data = data
+        self.filter = filtr
+        self.filter_dim = filter_dim
+        self.filtered_matrix = []
 
-    def get_features(self, f_list):
-        numFeat = 1
-        for rows in range(self.f_rows):
-            startFeaty = 0
-            endFeaty = self.pixel_incr_W
-            for cols in range(self.f_cols):
-                count = 0
-                for line in self.lines[self.startFeatx:self.endFeatx]:
-                    startFeaty = startFeaty
-                    endFeaty = endFeaty
-                    for char in line[startFeaty:endFeaty]:
-                        if char == '#' or char == '+':
-                            count += 1
-                f_list.append(count)
-                startFeaty += self.pixel_incr_W
-                endFeaty += self.pixel_incr_W
-                numFeat += 1
-            self.startFeatx += self.pixel_incr_H
-            self.endFeatx += self.pixel_incr_H
+    def get_features(self, index):
+        #initiate convolution
+        self.data[index] = np.asarray(self.data[index])
+        filter = np.asarray(self.filter)
+        sub_shape = (self.filter_dim, self.filter_dim)
+        view_shape = tuple(np.subtract(self.data[index].shape, sub_shape) + 1) + sub_shape
+        strides = self.data[index].strides + self.data[index].strides
+        sub_matrices = np.lib.stride_tricks.as_strided(self.data[index],view_shape,strides)
+
+        row_count = 0
+        for x in self.data[index]:
+            col_count = 0
+            for y in x:
+                col_count += 1
+            row_count += 1
+
+        filtered_matrix = []
+        for a in range(row_count-3):
+            dot_prod_list = []
+            for b in range(col_count-3):
+                sum = 0
+                for x in range(self.filter_dim):
+                    for y in range(self.filter_dim):
+                        sum += self.filter[x][y]*sub_matrices[a][b][x][y]
+                dot_prod_list.append(sum)
+            filtered_matrix.append(dot_prod_list)
+
+        #initiate feature pooling
+        filtered_matrix = np.asarray(filtered_matrix)
+        sub_shape = (2, 2)
+        view_shape = tuple(np.subtract(filtered_matrix.shape, sub_shape) + 1) + sub_shape
+        strides = filtered_matrix.strides + filtered_matrix.strides
+        filtered_sub_matrices = np.lib.stride_tricks.as_strided(filtered_matrix,view_shape,strides)
+
+        f_row_count = 0
+        for x in filtered_matrix:
+            f_col_count = 0
+            for y in x:
+                f_col_count += 1
+            f_row_count += 1
+
+        #max pool and flatten features to 1D list
+        pooled_matrix = []
+        for a in range(f_row_count-2):
+            pooled_cols = []
+            for b in range(f_col_count-2):
+                pooled_cols.append(np.amax(filtered_sub_matrices[a][b]))
+            pooled_matrix.append(pooled_cols)
+
+        f_list = []
+        for rows in pooled_matrix:
+            for char in rows:
+                f_list.append(char)
+
+        feature_total = len(f_list)
+
+        return f_list, feature_total
+
+
     #returns a 2D list of all feature values across all instances in a data file
-    def get_f_list(self):
+    def get_feat_all_img(self):
         for x in range(self.data_total):
-            featList = []
-            self.get_features(featList)
-            self.f_list.append(featList)
-        return self.f_list
+            img_features = self.get_features(x)
+            self.all_img_f_list.append(img_features[0])
+        feature_total = img_features[1]
+        return self.all_img_f_list, feature_total
 
 #count number of instances that are either true or false
 def get_digit_totals(labels_list, d_total):
@@ -110,7 +170,6 @@ def get_digit_totals(labels_list, d_total):
             count_9 += 1
         else:
             continue
-
     return count_0, count_1, count_2, count_3, count_4, count_5, count_6, count_7, count_8, count_9
 
 #return a tuple of 2_D lists that contain data tables for instance label = true and label = false
@@ -255,23 +314,25 @@ def print_accuracy(labels_list, d_total, r_list):
 
 #main function to initialize all other functions
 def main():
-    #Initialize classes to get feature lists from training and testing
-    features = Features(FEATURE_ROWS, FEATURE_COLS, PIX_INCREMENT_W, PIX_INCREMENT_H, TRAIN_DATA_TOTAL, train_lines)
-    train_feat_list = features.get_f_list()
-    features = Features(FEATURE_ROWS, FEATURE_COLS, PIX_INCREMENT_W, PIX_INCREMENT_H, TEST_DATA_TOTAL, test_lines)
-    test_feat_list = features.get_f_list()
+    #Initialize classes to get feature lists from training data
+    train_bin_data_list = convert_image_to_bin(train_lines, TRAIN_FILE_PIX_HEIGHT, IMAGE_PIX_HEIGHT)
+    train_features = Features(filter, FILTER_DIM, TRAIN_DATA_TOTAL, train_bin_data_list)
+    train_feat_list = train_features.get_feat_all_img()
+    #Initialize classes to get feature lists from testing data
+    test_bin_data_list = convert_image_to_bin(test_lines, TEST_FILE_PIX_HEIGHT, IMAGE_PIX_HEIGHT)
+    test_features = Features(filter, FILTER_DIM, TEST_DATA_TOTAL, test_bin_data_list)
+    test_feat_list = test_features.get_feat_all_img()
     #Initialize training functions
     digit_totals = get_digit_totals(train_labels, TRAIN_DATA_TOTAL)
-    digit_data_tables = get_data_tables(train_feat_list, train_labels, FEATURE_TOTAL, TRAIN_DATA_TOTAL)
+    digit_data_tables = get_data_tables(train_feat_list[0], train_labels, train_feat_list[1], TRAIN_DATA_TOTAL)
     max_feature_value = get_max_feat_value(digit_data_tables)
     digit_probs_list = []
     for p in range(10):
-        digit_probs_list.append(get_data_feature_probs(FEATURE_TOTAL, max_feature_value, digit_data_tables[p], digit_totals[p]))
+        digit_probs_list.append(get_data_feature_probs(train_feat_list[1], max_feature_value, digit_data_tables[p], digit_totals[p]))
     prob_inst_prior = prob_instance_prior(TRAIN_DATA_TOTAL, digit_totals)
     #Initialize testing functions
-    result_list = get_results(TEST_DATA_TOTAL, FEATURE_TOTAL, max_feature_value, test_feat_list, digit_probs_list, prob_inst_prior)
+    result_list = get_results(TEST_DATA_TOTAL, test_feat_list[1], max_feature_value, test_feat_list[0], digit_probs_list, prob_inst_prior)
     print_accuracy(test_labels, TEST_DATA_TOTAL, result_list)
-
 
 #init main
 main()

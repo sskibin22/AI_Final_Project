@@ -109,7 +109,7 @@ def get_max_feat_value(data_tables):
     for x in data_tables[1]:
         max_list.append(max(x))
 
-    max_f_value = max(max_list)
+    max_f_value = max(max_list)+1
     return max_f_value
 
 #return a list of computed probabilities for each data point occuring in each feature out of all instances
