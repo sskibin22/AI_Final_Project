@@ -1,5 +1,5 @@
 import math
-
+import random
 #Read Global Files
 #read training data into list
 faceFile = open(r"C:\Users\atfan\github\AI_Final_Project\digitdata\trainingimages",'r')
@@ -25,7 +25,9 @@ for c in labelFile.read():
 labelFile.close()
 
 #Global Variables
-TRAIN_DATA_TOTAL = len(train_labels)
+ITERATIONS = 5
+DATA_PERCENT = 1
+SAMPLE_TOTAL = len(train_labels)
 TEST_DATA_TOTAL = len(test_labels)
 FEATURE_ROWS = 28
 FEATURE_COLS = 28
@@ -180,7 +182,7 @@ def get_max_feat_value(data_tables):
         for x in data_tables[y]:
             max_list.append(max(x))
 
-    max_f_value = max(max_list)+1
+    max_f_value = max(max_list)
     return max_f_value
 
 #return a list of computed probabilities for each data point occuring in each feature out of all instances
@@ -253,25 +255,65 @@ def print_accuracy(labels_list, d_total, r_list):
 
     print('accuracy: ',round(accuracy*100,2),'%')
 
+    return accuracy
+
 #main function to initialize all other functions
-def main():
+def main(percent):
+    #set sample size based on a percentage of total data set
+    TRAIN_DATA_TOTAL = int(round(len(train_labels)*percent, 0))
+    # print(TRAIN_DATA_TOTAL)
+    #match labels with images in a list
+    start = 0
+    end = 28
+    train_img_labels = []
+    for x in range(SAMPLE_TOTAL):
+        image = []
+        lab_img = []
+        for line in train_lines[start:end]:
+                image.append(line)
+        lab_img.append(image)
+        lab_img.append(train_labels[x])
+        train_img_labels.append(lab_img)
+        start+=28
+        end+=28
+    #randomize data based on sample size
+    rand_train_img_label = random.sample(train_img_labels, TRAIN_DATA_TOTAL)
+    #seperate images and labels into distinct lists
+    new_train_img = []
+    new_train_labels = []
+    for i in rand_train_img_label:
+        for j in i[0]:
+            new_train_img.append(j)
+        new_train_labels.append(i[1])
     #Initialize classes to get feature lists from training and testing
-    features = Features(FEATURE_ROWS, FEATURE_COLS, PIX_INCREMENT_W, PIX_INCREMENT_H, TRAIN_DATA_TOTAL, train_lines)
+    features = Features(FEATURE_ROWS, FEATURE_COLS, PIX_INCREMENT_W, PIX_INCREMENT_H, TRAIN_DATA_TOTAL, new_train_img)
     train_feat_list = features.get_f_list()
     features = Features(FEATURE_ROWS, FEATURE_COLS, PIX_INCREMENT_W, PIX_INCREMENT_H, TEST_DATA_TOTAL, test_lines)
     test_feat_list = features.get_f_list()
     #Initialize training functions
-    digit_totals = get_digit_totals(train_labels, TRAIN_DATA_TOTAL)
-    digit_data_tables = get_data_tables(train_feat_list, train_labels, FEATURE_TOTAL, TRAIN_DATA_TOTAL)
+    digit_totals = get_digit_totals(new_train_labels, TRAIN_DATA_TOTAL)
+    digit_data_tables = get_data_tables(train_feat_list, new_train_labels, FEATURE_TOTAL, TRAIN_DATA_TOTAL)
     max_feature_value = get_max_feat_value(digit_data_tables)
     digit_probs_list = []
     for p in range(10):
-        digit_probs_list.append(get_data_feature_probs(FEATURE_TOTAL, max_feature_value, digit_data_tables[p], digit_totals[p]))
+        digit_probs_list.append(get_data_feature_probs(FEATURE_TOTAL, max_feature_value+1, digit_data_tables[p], digit_totals[p]))
     prob_inst_prior = prob_instance_prior(TRAIN_DATA_TOTAL, digit_totals)
     #Initialize testing functions
-    result_list = get_results(TEST_DATA_TOTAL, FEATURE_TOTAL, max_feature_value, test_feat_list, digit_probs_list, prob_inst_prior)
-    print_accuracy(test_labels, TEST_DATA_TOTAL, result_list)
+    result_list = get_results(TEST_DATA_TOTAL, FEATURE_TOTAL, max_feature_value+1, test_feat_list, digit_probs_list, prob_inst_prior)
+    acc = print_accuracy(test_labels, TEST_DATA_TOTAL, result_list)
 
+    return round(acc*100,2)
 
 #init main
-main()
+acc_list = []
+for x in range(ITERATIONS):
+    acc_list.append(main(DATA_PERCENT))
+mean_acc = sum(acc_list)/len(acc_list)
+var_mean = 0
+for i in acc_list:
+    var_mean += pow((i-mean_acc),2)
+var = var_mean/len(acc_list)
+std_dev = math.sqrt(var)
+print('mean accuracy: ',round(mean_acc,2),'%')
+print('variance: ', round(var,2))
+print('standard deviation: ',round(std_dev,3))
