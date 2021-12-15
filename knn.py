@@ -144,22 +144,22 @@ def main(mode):
         trainLabelsPath = "facedata/facedatatrainlabels"
 
     # read the testing numbers into list
-    testFile = open("data/{}".format(testImagesPath), "r")
+    testFile = open("{}".format(testImagesPath), "r")
     testLines = testFile.readlines()
     testFile.close()
 
     # read testing labels for digits into list
-    testLabelFile = open("data/{}".format(testLabelsPath), "r")
+    testLabelFile = open("{}".format(testLabelsPath), "r")
     testLabelLines = testLabelFile.readlines()
     testLabelFile.close()
 
     # read the training numbers into list
-    digitFile = open("data/{}".format(trainImagesPath), "r")
+    digitFile = open("{}".format(trainImagesPath), "r")
     digitLines = digitFile.readlines()
     digitFile.close()
 
     # read training labels for digits into list
-    labelFile = open("data/{}".format(trainLabelsPath), "r")
+    labelFile = open("{}".format(trainLabelsPath), "r")
     labelLines = labelFile.readlines()
     labelFile.close()
 
