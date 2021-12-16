@@ -50,9 +50,17 @@ def matrixify(arr, mode):
     return matrix
 
 
-def euclideanDistance(features1, mode, features):
+def euclideanDistance(img1, mode, features):
     # if mode == 0 extract features
     # if mode == 0:
+    mat1 = None
+    if mode == 0:
+        mat1 = viewAsBlocks(img1, (FACE_BLOCK_LEN, FACE_BLOCK_LEN))
+    else:
+        mat1 = np.array(img1)
+        mat1 = mat1.reshape(28, 28)
+        mat1 = viewAsBlocks(mat1, (DIGIT_BLOCK_LEN, DIGIT_BLOCK_LEN))
+    features1 = [computeFeature(block) for block in mat1]
     currSum = 0
 
     for f1, f2 in zip(features1, features):
@@ -75,18 +83,8 @@ def majorityLabel(labels):
 
 
 def predict(k, trainingImages, trainingLabels, trainingFeatures, testImage, mode):
-    mat1 = None
-    if mode == 0:
-        mat1 = viewAsBlocks(testImage, (FACE_BLOCK_LEN, FACE_BLOCK_LEN))
-    else:
-        mat1 = np.array(testImage)
-        mat1 = mat1.reshape(28, 28)
-        mat1 = viewAsBlocks(mat1, (DIGIT_BLOCK_LEN, DIGIT_BLOCK_LEN))
-
-    features1 = [computeFeature(block) for block in mat1]
-
     distances = [
-        (euclideanDistance(features1, mode, features), label)
+        (euclideanDistance(testImage, mode, features), label)
         for (features, label) in zip(trainingFeatures, trainingLabels)
     ]
 
@@ -197,6 +195,9 @@ def main(mode):
     testingImages, testingLabels = getImages(testLines, testLabelLines, mode)
     trainingImages, trainingLabels = getImages(digitLines, labelLines, mode)
 
+    print(len(trainingImages))
+    print(len(testingImages))
+
     trainingImagesFeatures = extractFeatures(trainingImages, mode)
 
     trainDataAmount = int(round(1 * len(trainingImages)))
@@ -235,4 +236,4 @@ def main(mode):
     print(stop - start)
 
 
-main(0)
+main(1)
